@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            color: rgb(4, 4, 4);
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            background: linear-gradient(135deg, );
+            animation: bgTransition 5s infinite alternate;
+        }
+
+        @keyframes bgTransition {
+            0% { background: #d4cc72, #c0a1a1, #8fd0d0; } 
+            100% { background: #d4cc72, #c0a1a1, #8fd0d0; } 
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .graph {
+            width: 45%;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.749);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(99, 72, 72, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 80%;
+        }
+
+        .back-button {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background: #d4cc72, #c0a1a1, #8fd0d0;
+            color: 
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background: #d4cc72, #c0a1a1, #8fd0d0;
+            color: rgb(185, 155, 116);
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="goBack()">Back to Expense Tracker</button>
+
+    <div class="container">
+        <div class="graph">
+            <h3>Daily, Weekly & Monthly Expenses</h3>
+            <canvas id="barChart"></canvas>
+        </div>
+        <div class="graph">
+            <h3>Expense Distribution</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetchExpenseData();
+        });
+
+        function goBack() {
+            window.location.href = "expensetracker.html"; 
+        }
+
+        async function fetchExpenseData() {
+            try {
+                let response = await fetch("http://127.0.0.1:5000/expenses");
+                
+                if (!response.ok) {
+                    throw new Error("Failed to fetch expenses");
+                }
+
+                let expenses = await response.json();
+
+                if (!Array.isArray(expenses)) {
+                    throw new Error("Invalid data format received");
+                }
+
+                console.log("Fetched Expenses:", expenses);
+                updateCharts(expenses);
+            } catch (error) {
+                console.error("Error fetching expense data:", error);
+            }
+        }
+
+        function updateCharts(expenses) {
+            let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0;
+            let categoryTotals = {};
+
+            let today = new Date();
+            let oneWeekAgo = new Date();
+            oneWeekAgo.setDate(today.getDate() - 7);
+            let oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(today.getMonth() - 1);
+
+            expenses.forEach(expense => {
+                let expenseDate = new Date(expense.date);
+
+                if (expenseDate.toDateString() === today.toDateString()) {
+                    dailyTotal += expense.amount;
+                }
+                if (expenseDate >= oneWeekAgo) {
+                    weeklyTotal += expense.amount;
+                }
+                if (expenseDate >= oneMonthAgo) {
+                    monthlyTotal += expense.amount;
+                }
+
+                if (categoryTotals[expense.category]) {
+                    categoryTotals[expense.category] += expense.amount;
+                } else {
+                    categoryTotals[expense.category] = expense.amount;
+                }
+            });
+
+            // Update bar chart
+            barChart.data.datasets[0].data = [dailyTotal, weeklyTotal, monthlyTotal];
+            barChart.update();
+
+            // Update pie chart
+            pieChart.data.labels = Object.keys(categoryTotals);
+            pieChart.data.datasets[0].data = Object.values(categoryTotals);
+            pieChart.update();
+        }
+
+        // Initialize bar chart
+        let ctx1 = document.getElementById("barChart").getContext("2d");
+        let barChart = new Chart(ctx1, {
+            type: "bar",
+            data: {
+                labels: ["Daily", "Weekly", "Monthly"],
+                datasets: [{
+                    label: "Expenses (INR)",
+                    data: [0, 0, 0], 
+                    backgroundColor: ["#d4cc72", "#c0a1a1", "#8fd0d0"]
+                }]
+            }
+        });
+
+        // Initialize pie chart
+        let ctx2 = document.getElementById("pieChart").getContext("2d");
+        let pieChart = new Chart(ctx2, {
+            type: "pie",
+            data: {
+                labels: ["Loading..."], 
+                datasets: [{
+                    data: [1], 
+                    backgroundColor: ["#c0a1a1"]
+                }]
+            }
+        });
+    </script>
+</body>
+</html>
